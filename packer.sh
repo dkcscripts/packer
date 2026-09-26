@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# packer.sh — create self-extracting encrypted archives
+# packer.sh - create self-extracting encrypted archives
 # Usage: packer.sh -o <outfile.sh> <file/dir> [file/dir ...]
 # Output: standalone executable script w/ embedded tar + gpg + base64 payload
 
