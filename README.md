@@ -1,24 +1,22 @@
 # packer.sh
 
-Create **standalone self-extracting encrypted archives**. Single `.sh` file embeds everything: tar'd+compressed+gpg-encrypted+base64-encoded payload + extraction logic.
+Create **standalone self-extracting archives**. By default, each `.sh` embeds a tar'd, compressed, GPG-encrypted, base64-encoded payload. An optional no-password mode skips encryption and creates an archive that extracts without prompting.
 
-Run output script on target → prompts password → auto-extracts to CWD.
-
-Perfect for transferring confidential files over HTTP, email, or insecure channels.
+Encrypted archives prompt for a password when run and extract to the current working directory. Use the unencrypted mode only when the archive contents do not need protection.
 
 ---
 
 ## Requirements
 
-| Tool     | Purpose                       |
-|----------|-------------------------------|
-| `tar`    | Archive                       |
-| `xz`     | Compress                      |
-| `gpg`    | Symmetric encryption          |
-| `base64` | Encode/decode binary to ASCII |
-| `grep`   | Finding PAYLOAD inside script |
+| Tool     | Purpose                                  |
+|----------|------------------------------------------|
+| `tar`    | Archive                                  |
+| `xz`     | Compress                                 |
+| `gpg`    | Symmetric encryption (default mode only) |
+| `base64` | Encode/decode binary to ASCII            |
+| `grep`   | Finding PAYLOAD inside script            |
 
-All must be on `PATH`.
+All must be on `PATH`; `gpg` is only needed when creating or extracting encrypted archives.
 
 ---
 
@@ -27,12 +25,13 @@ All must be on `PATH`.
 ### Create self-extracting archive
 
 ```bash
-./packer.sh -o archive.sh <file/dir> [file/dir ...]
+./packer.sh -o archive.sh [--no-password] <file/dir> [file/dir ...]
 ```
 
 | Flag | Required | Description |
 |------|----------|-------------|
 | `-o <outfile.sh>` | ✅ | Path to write self-extracting script |
+| `-n, --no-password` | | Skip encryption and password prompts (contents are unencrypted) |
 | `<file/dir> ...` | ✅ | One or more files/dirs to pack |
 | `-h / --help` | | Show help |
 
@@ -42,8 +41,11 @@ All must be on `PATH`.
 # Pack single directory
 ./packer.sh -o backup.sh ~/projects/my-app
 
-# Pack multiple files
+# Pack multiple files with encryption (default)
 ./packer.sh -o secrets.sh .env config.json certs/
+
+# Pack without encryption or password prompts
+./packer.sh -n -o public-data.sh ./public-data/
 ```
 
 Output: executable `backup.sh` (or `secrets.sh`). Size ~33% larger than compressed binary (base64 overhead).
@@ -54,12 +56,7 @@ Output: executable `backup.sh` (or `secrets.sh`). Size ~33% larger than compress
 ./backup.sh
 ```
 
-Script will:
-1. Prompt for password (use same one from packing)
-2. Decode base64
-3. Decrypt with GPG (passes password to gpg)
-4. Extract tar to current directory
-5. Exit
+Encrypted archives prompt for the packing password, then decode the base64 payload, decrypt with GPG, and extract to the current directory. Archives created with `--no-password` skip decryption and extract directly.
 
 No temp files left behind.
 
@@ -130,7 +127,8 @@ chmod +x my-app.sh
 
 - **Self-contained:** single `.sh` file. No launcher + payload split. Just run it.
 - **Portable:** works Linux + macOS + Git Bash (Windows). Only needs tar/xz/gpg/base64/grep.
-- **Secure:** GPG symmetric encryption, passphrase-based. No key files.
+- **Encrypted by default:** GPG symmetric encryption, passphrase-based. No key files.
+- **Optional unencrypted mode:** `--no-password` avoids password prompts, but anyone with the archive can read its contents.
 - **Transparent:** verbose extraction output shows what's being extracted.
 - **Safe encoding:** base64 makes encrypted binary safe for any channel (HTTP, email, etc.).
 
@@ -190,8 +188,11 @@ chmod +x my-app.sh
 
 ```bash
 ./packer.sh -o data.sh ./sensitive-data/
-# .sh file is plain text, safe to paste in Slack/Teams
 # Recipient runs: ./data.sh (encrypted, needs password)
+
+# For non-sensitive files, skip encryption and the password prompt
+./packer.sh --no-password -o public-data.sh ./public-data/
+# Recipient runs: ./public-data.sh (no password; contents are unencrypted)
 ```
 
 ---
