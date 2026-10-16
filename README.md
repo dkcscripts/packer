@@ -14,9 +14,10 @@ Encrypted archives prompt for a password when run and extract to the current wor
 | `xz`     | Compress                                 |
 | `gpg`    | Symmetric encryption (default mode only) |
 | `base64` | Encode/decode binary to ASCII            |
+| `split`  | Split payload when `--split-size` is used |
 | `grep`   | Finding PAYLOAD inside script            |
 
-All must be on `PATH`; `gpg` is only needed when creating or extracting encrypted archives.
+All tools must be on `PATH`; `gpg` is only needed for encrypted archives, and `split` only when using `--split-size`.
 
 ---
 
@@ -25,13 +26,14 @@ All must be on `PATH`; `gpg` is only needed when creating or extracting encrypte
 ### Create self-extracting archive
 
 ```bash
-./packer.sh -o archive.sh [--no-password] <file/dir> [file/dir ...]
+./packer.sh -o archive.sh [--no-password] [--split-size <size>] <file/dir> [file/dir ...]
 ```
 
 | Flag | Required | Description |
 |------|----------|-------------|
 | `-o <outfile.sh>` | ✅ | Path to write self-extracting script |
 | `-n, --no-password` | | Skip encryption and password prompts (contents are unencrypted) |
+| `-s, --split-size <size>` | | Write a launcher and payload parts no larger than this size (bytes, or K/M/G suffix such as `100M`) |
 | `<file/dir> ...` | ✅ | One or more files/dirs to pack |
 | `-h / --help` | | Show help |
 
@@ -49,6 +51,16 @@ All must be on `PATH`; `gpg` is only needed when creating or extracting encrypte
 ```
 
 Output: executable `backup.sh` (or `secrets.sh`). Size ~33% larger than compressed binary (base64 overhead).
+
+To cap the size of each payload file, add `--split-size`. This writes the executable launcher plus alphabetically suffixed `.aa.part`, `.ab.part`, ... files next to it:
+
+```bash
+./packer.sh -n -o backup.sh --split-size 100M ./large-data/
+# Transfer backup.sh and every backup.sh.*.part file together
+./backup.sh
+```
+
+The launcher requires all payload parts to be present beside it. The size limit applies to each encoded payload part; the launcher is a separate small file. Two-letter suffixes allow up to 676 parts; packing stops with an error rather than exceeding that limit. Without `--split-size`, output remains a single self-contained script.
 
 ### Extract on target machine
 
